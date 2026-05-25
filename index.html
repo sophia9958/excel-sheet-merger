@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Excel 多工作表合并工具</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;--card:#fff;--text:#1f2937;--muted:#667085;--line:#e5e7eb;
+      --primary:#2563eb;--primary2:#1d4ed8;--green:#16a34a;--orange:#f59e0b;--red:#dc2626;--blue:#0ea5e9;
+      --shadow:0 8px 28px rgba(15,23,42,.08);--radius:16px;
+    }
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;color:var(--text)}
+    header{padding:26px 28px 14px;max-width:1280px;margin:auto}.title{display:flex;gap:14px;align-items:center;flex-wrap:wrap}.title h1{margin:0;font-size:28px}.badge{background:#e0ecff;color:#174ea6;padding:6px 10px;border-radius:999px;font-size:13px;font-weight:700}.subtitle{color:var(--muted);margin:8px 0 0;line-height:1.7}
+    main{max-width:1280px;margin:0 auto 40px;padding:0 28px}.grid{display:grid;grid-template-columns:1.05fr .95fr;gap:18px}@media(max-width:980px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-top:18px}.card h2{font-size:18px;margin:0 0 14px}.card h3{font-size:15px;margin:16px 0 10px}.muted{color:var(--muted)}
+    .drop{border:2px dashed #bfd1ff;background:#f8fbff;border-radius:18px;padding:26px;text-align:center;transition:.15s;cursor:pointer}.drop.drag{border-color:var(--primary);background:#eef5ff}.drop strong{font-size:17px}.drop p{margin:8px 0 0;color:var(--muted)} input[type=file]{display:none}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 13px;cursor:pointer;font-weight:700;color:#111827}.btn:hover{border-color:#cbd5e1;background:#f8fafc}.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}.btn.primary:hover{background:var(--primary2)}.btn.danger{color:var(--red)}.btn:disabled{opacity:.45;cursor:not-allowed}
+    .options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}@media(max-width:680px){.options{grid-template-columns:1fr}}.field{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fcfcfd}.field label{display:block;font-size:13px;font-weight:800;margin-bottom:7px}.field input[type=number],.field input[type=text],.field select{width:100%;border:1px solid #d1d5db;border-radius:9px;padding:9px;background:white}.checkrow{display:flex;align-items:center;gap:8px;margin:7px 0;color:#374151}
+    .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}.stat{border:1px solid var(--line);border-radius:14px;background:#fbfdff;padding:12px}.stat .num{font-size:22px;font-weight:900}.stat .lab{font-size:12px;color:var(--muted);margin-top:3px}
+    table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid var(--line);padding:8px 9px;text-align:left;vertical-align:top}th{position:sticky;top:0;background:#f8fafc;z-index:1;color:#374151}.tablewrap{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:12px}.mini{font-size:12px;color:var(--muted)}.pill{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:800}.ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.err{background:#fee2e2;color:#991b1b}.info{background:#e0f2fe;color:#075985}.hidden{display:none!important}.progress{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden}.bar{height:100%;width:0;background:linear-gradient(90deg,#2563eb,#22c55e);transition:.2s}.notice{border-left:4px solid var(--blue);background:#f0f9ff;padding:10px 12px;border-radius:10px;color:#0c4a6e;line-height:1.6}.dangerBox{border-left-color:var(--red);background:#fff1f2;color:#991b1b}.warnBox{border-left-color:var(--orange);background:#fffbeb;color:#92400e}.footer{font-size:12px;color:var(--muted);line-height:1.7}.step{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.step b{background:#111827;color:white;border-radius:999px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:12px}.code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#f3f4f6;border-radius:6px;padding:1px 5px}.nowrap{white-space:nowrap}.previewEmpty{padding:24px;text-align:center;color:var(--muted)}
+  </style>
+</head>
+<body>
+<header>
+  <div class="title"><h1>Excel 多工作表合并工具</h1><span class="badge">本地浏览器处理</span><span class="badge" style="background:#dcfce7;color:#166534">当前版本：v20260525-导出按钮自检版</span></div>
+  <p class="subtitle">把一个或多个 Excel 文件里的多个 sheet 纵向合并成一张总表。默认按字段名对齐、跳过全空行、保留来源文件 / 来源工作表 / 来源行号，并在导出前显示预览和处理摘要。</p>
+</header>
+<main>
+  <div class="notice">隐私说明：本页面默认在当前浏览器内读取、合并和导出文件，不会主动上传你的 Excel 内容。若使用在线 CDN 加载 Excel 解析库，浏览器会访问脚本资源地址；文件内容仍在本地处理。</div>
+
+  <div class="notice" style="border-left-color:#16a34a;background:#f0fdf4;color:#166534;margin-top:12px">
+    <b>版本自检：</b>当前文件是 <b>v20260525-导出按钮自检版</b>。如果你看到的页面没有这行绿色版本提示，说明打开的是旧文件。此版本中“导出 Excel”按钮默认可点击；即使没上传文件，点击也会弹出提示。
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <div class="step"><b>1</b><h2>上传 Excel</h2></div>
+      <div id="drop" class="drop">
+        <strong>拖拽 Excel 到这里，或点击选择文件</strong>
+        <p>支持 .xlsx / .xls / .csv；建议首版以 .xlsx 为主。可以一次选择多个文件。</p>
+        <input id="fileInput" type="file" multiple accept=".xlsx,.xls,.csv" />
+      </div>
+      <div style="height:12px"></div>
+      <div class="progress"><div id="progressBar" class="bar"></div></div>
+      <p id="status" class="mini">等待上传文件。</p>
+      <div class="toolbar">
+        <button class="btn" id="selectAllBtn" disabled>全选可合并 sheet</button>
+        <button class="btn" id="selectNoneBtn" disabled>全部取消</button>
+        <button class="btn danger" id="clearBtn" disabled>清空</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="step"><b>2</b><h2>合并规则</h2></div>
+      <div class="options">
+        <div class="field"><label>表头行号</label><input id="headerRow" type="number" min="1" value="1" /><div class="mini">默认第 1 行为表头。</div></div>
+        <div class="field"><label>预览行数</label><input id="previewLimit" type="number" min="20" max="1000" value="100" /></div>
+        <div class="field"><label>字段对齐方式</label><select id="mergeMode"><option value="name">按字段名对齐：看表头名字，推荐</option><option value="position">按列位置合并：看第几列</option></select><div class="mini">拿不准时选“按字段名对齐”。</div></div>
+        <div class="field"><label>来源字段位置</label><select id="sourcePosition"><option value="left">放在最左侧</option><option value="right">放在最右侧</option><option value="none">不添加来源字段</option></select></div>
+      </div>
+      <div class="notice" style="margin-top:12px">
+        <b>字段对齐方式怎么选？</b><br>
+        <b>按字段名对齐：</b>看每一列的表头名字来合并，比如“片名”就合到“片名”列，不管它在第 1 列还是第 3 列。适合大多数办公表，尤其是不同 sheet 的列顺序可能不一样时。<b>推荐默认选这个。</b><br>
+        <b>按列位置合并：</b>不看表头名字，只看第几列，第 1 列合第 1 列，第 2 列合第 2 列。只有在所有 sheet 的列顺序完全一样时才建议用；如果某个 sheet 调换过列，容易把数据合错列。
+      </div>
+      <h3>默认处理</h3>
+      <label class="checkrow"><input id="skipEmptyRows" type="checkbox" checked /> 跳过全空行</label>
+      <label class="checkrow"><input id="skipRepeatedHeader" type="checkbox" checked /> 跳过数据区重复表头</label>
+      <label class="checkrow"><input id="includeSummary" type="checkbox" checked /> 导出处理摘要 sheet</label>
+      <label class="checkrow"><input id="includeIssues" type="checkbox" checked /> 导出需复核明细 sheet</label>
+      <label class="checkrow"><input id="keepAnomalyRows" type="checkbox" checked /> 保留疑似需复核数据行并添加提示标记</label>
+      <div class="notice" style="margin-top:12px">
+        <b>这些勾选项是什么意思？</b><br>
+        <b>跳过全空行：</b>一整行都没填内容，就不放进总表。比如 sheet 最后多出来的空白行，会自动忽略。<br>
+        <b>跳过数据区重复表头：</b>如果数据中间又出现一行“批次、版块、片名、时长”这样的表头，就当作重复表头，不当成数据。<br>
+        <b>导出处理摘要：</b>额外生成一张“处理摘要”表，记录每个文件、每个 sheet 原来多少行、实际合并了多少行、跳过多少空行、是否有需复核内容。<br>
+        <b>导出需复核明细：</b>额外生成一张“需复核明细”表，把“表头不一致、疑似占位行、疑似汇总行”等需要看一眼的地方列出来。它不等于报错，这不代表文件错了，只是提醒你复核。<br>
+        <b>保留疑似需复核数据行：</b>遇到不确定的行先不删，而是在结果里加一列“复核提示”。这样更安全，避免系统误删真实数据。
+      </div>
+      <div class="toolbar" style="margin-top:14px">
+        <button class="btn primary" id="mergeBtn" disabled>合并并预览</button>
+        <button class="btn primary" id="exportBtn" title="自检版：默认可点击，未合并时会弹出提示">导出 Excel</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="step"><b>3</b><h2>文件与工作表</h2></div>
+    <div id="sheetList" class="tablewrap"><div class="previewEmpty">上传后这里会显示所有文件和 sheet。</div></div>
+  </section>
+
+  <section class="card">
+    <div class="step"><b>4</b><h2>处理摘要</h2></div>
+    <div id="stats" class="stats"></div>
+    <div id="issueNotice" style="margin-top:12px"></div>
+  </section>
+
+  <section class="card">
+    <div class="step"><b>5</b><h2>合并结果预览</h2></div>
+    <div id="preview" class="tablewrap"><div class="previewEmpty">点击“合并并预览”后显示结果。</div></div>
+  </section>
+
+  <section class="card">
+    <h2>使用说明</h2>
+    <ol class="footer">
+      <li>上传一个或多个 Excel 文件。</li>
+      <li>确认要合并的 sheet 是否都已勾选。</li>
+      <li>如果表头不在第 1 行，修改“表头行号”。</li>
+      <li>字段对齐方式建议选“按字段名对齐”：它看表头名字来合并，列顺序不一样也不容易错；只有所有 sheet 列顺序完全一样时，才考虑“按列位置合并”。</li>
+      <li>点击“合并并预览”，核对参与 sheet 数、输出行数、需复核提示。</li>
+      <li>确认无误后导出 Excel。导出的文件默认包含合并结果、处理摘要和需复核明细。处理摘要用于核对原始行数和实际合并行数，需复核明细用于定位需要人工看一眼的地方。</li>
+    </ol>
+  </section>
+</main>
+
+<script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+  onload="window.__xlsxLoadState='loaded'; if(window.excelMergerSetStatus) window.excelMergerSetStatus('脚本已启动，Excel 解析库已加载，可以上传文件。', 0);"
+  onerror="window.__xlsxLoadState='failed'; if(window.excelMergerSetStatus) window.excelMergerSetStatus('脚本已启动，但 Excel 解析库加载失败：请联网或使用离线版。', 0);">
+</script>
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const state = { files: [], sheets: [], merged: null, issues: [], summary: [] };
+  const els = {
+    drop:$('drop'), fileInput:$('fileInput'), status:$('status'), progressBar:$('progressBar'), sheetList:$('sheetList'),
+    stats:$('stats'), preview:$('preview'), issueNotice:$('issueNotice'), selectAllBtn:$('selectAllBtn'), selectNoneBtn:$('selectNoneBtn'),
+    clearBtn:$('clearBtn'), mergeBtn:$('mergeBtn'), exportBtn:$('exportBtn')
+  };
+
+  function setStatus(msg, pct){ els.status.textContent = msg; if(pct !== undefined) els.progressBar.style.width = pct + '%'; }
+  window.excelMergerSetStatus = setStatus;
+  window.addEventListener('error', e => { try{ setStatus('页面脚本出错：' + (e.message || '未知错误') + '。请把这行提示发给开发者。', 0); }catch(_){} });
+  function waitFrame(ms=40){ return new Promise(resolve => setTimeout(resolve, ms)); }
+  function norm(v){ return String(v ?? '').replace(/\s+/g,'').replace(/[\u3000]/g,'').trim(); }
+  function display(v){ return v === undefined || v === null ? '' : String(v); }
+  function isEmptyVal(v){ return v === undefined || v === null || String(v).trim() === ''; }
+  function isEmptyRow(row){ return !row || row.every(isEmptyVal); }
+  function sameHeaderRow(row, headers){
+    const a = row.map(norm).filter(Boolean); const b = headers.map(norm).filter(Boolean);
+    if(!a.length || !b.length) return false;
+    let hit = 0; a.forEach(x => { if(b.includes(x)) hit++; });
+    return hit / Math.max(a.length, b.length) >= 0.7;
+  }
+  function uniqueName(name, used){ let n = name || '未命名字段'; let i=1, out=n; while(used.has(out)){ out = n + '_' + i++; } used.add(out); return out; }
+  function escapeHtml(s){ return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function nowName(){ const d = new Date(); const p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; }
+
+  function classifySheet(name, aoa, hidden){
+    const n = String(name || '');
+    if(!aoa || !aoa.some(r => !isEmptyRow(r))) return {selected:false, reason:'空工作表', level:'warn'};
+    if(hidden) return {selected:false, reason:'隐藏工作表', level:'warn'};
+    if(/说明|模板|目录|示例/.test(n)) return {selected:false, reason:'疑似说明/模板页', level:'warn'};
+    if(/汇总|统计|总计|合计/.test(n)) return {selected:false, reason:'疑似汇总页，避免重复合并', level:'warn'};
+    return {selected:true, reason:'可合并', level:'ok'};
+  }
+
+  async function readFiles(files){
+    if(!window.XLSX){ setStatus('Excel 解析库还没加载成功，无法读取文件。请等几秒再试；如果仍不行，需要联网或使用离线版。', 0); alert('Excel 解析库还没加载成功，无法读取文件。请等几秒再试；如果仍不行，需要联网或使用离线版。'); return; }
+    reset(false); setStatus('开始读取文件...', 5);
+    const list = Array.from(files || []); if(!list.length) return;
+    let seq = 0;
+    for(let i=0;i<list.length;i++){
+      const file = list[i]; setStatus(`正在读取：${file.name}`, Math.round((i/list.length)*60)+5);
+      try{
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, {type:'array', cellDates:true, raw:false});
+        const hiddenInfo = (wb.Workbook && wb.Workbook.Sheets) || [];
+        const fileRec = {id:'f'+i, name:file.name, size:file.size, sheetCount:wb.SheetNames.length};
+        state.files.push(fileRec);
+        wb.SheetNames.forEach((sheetName, idx) => {
+          const ws = wb.Sheets[sheetName];
+          const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', blankrows:true, raw:false});
+          const hidden = !!(hiddenInfo[idx] && hiddenInfo[idx].Hidden);
+          const usedRows = aoa.filter(r => !isEmptyRow(r)).length;
+          const colCount = Math.max(0, ...aoa.map(r => r.length || 0));
+          const c = classifySheet(sheetName, aoa, hidden);
+          const id = 's' + (seq++);
+          state.sheets.push({id, fileId:fileRec.id, fileName:file.name, sheetName, index:idx+1, hidden, aoa, rowCount:aoa.length, usedRows, colCount, selected:c.selected, reason:c.reason, level:c.level});
+        });
+      } catch(err){
+        state.issues.push({level:'L3', type:'文件无法解析', file:file.name, sheet:'', row:'', col:'', message:err.message || String(err), action:'跳过该文件'});
+      }
+    }
+    setStatus(`读取完成：${state.files.length} 个文件，${state.sheets.length} 个工作表。`, 100);
+    renderSheets(); renderStats(); toggleButtons();
+  }
+
+  function reset(clearInput=true){
+    state.files=[]; state.sheets=[]; state.merged=null; state.issues=[]; state.summary=[];
+    els.sheetList.innerHTML='<div class="previewEmpty">上传后这里会显示所有文件和 sheet。</div>';
+    els.preview.innerHTML='<div class="previewEmpty">点击“合并并预览”后显示结果。</div>';
+    els.issueNotice.innerHTML=''; els.stats.innerHTML=''; els.progressBar.style.width='0%'; els.status.textContent='等待上传文件。';
+    if(clearInput) els.fileInput.value=''; toggleButtons();
+  }
+  function toggleButtons(){ const has = state.sheets.length>0; els.selectAllBtn.disabled=!has; els.selectNoneBtn.disabled=!has; els.clearBtn.disabled=!has; els.mergeBtn.disabled=!has; els.exportBtn.disabled=false; }
+
+  function renderSheets(){
+    if(!state.sheets.length){ els.sheetList.innerHTML='<div class="previewEmpty">没有识别到工作表。</div>'; return; }
+    let html = '<table><thead><tr><th><input id="allChk" type="checkbox"></th><th>文件</th><th>Sheet</th><th>行/有效行</th><th>列</th><th>状态</th><th>表头预览</th></tr></thead><tbody>';
+    const hr = Math.max(1, Number($('headerRow').value || 1)) - 1;
+    for(const s of state.sheets){
+      const headers = (s.aoa[hr] || []).filter(x => !isEmptyVal(x)).slice(0,8).map(escapeHtml).join(' / ');
+      const pill = s.level === 'ok' ? 'ok' : 'warn';
+      html += `<tr><td><input type="checkbox" class="sheetChk" data-id="${s.id}" ${s.selected?'checked':''}></td><td>${escapeHtml(s.fileName)}</td><td>${escapeHtml(s.sheetName)} ${s.hidden?'<span class="pill warn">隐藏</span>':''}</td><td class="nowrap">${s.rowCount} / ${s.usedRows}</td><td>${s.colCount}</td><td><span class="pill ${pill}">${escapeHtml(s.reason)}</span></td><td class="mini">${headers || '未识别'}</td></tr>`;
+    }
+    html += '</tbody></table>'; els.sheetList.innerHTML = html;
+    els.sheetList.querySelectorAll('.sheetChk').forEach(chk => chk.addEventListener('change', e => { const s = state.sheets.find(x=>x.id===e.target.dataset.id); if(s) s.selected = e.target.checked; renderStats(); }));
+    const allChk = $('allChk'); if(allChk){ allChk.addEventListener('change', e => { state.sheets.forEach(s=>s.selected=e.target.checked); renderSheets(); renderStats(); }); }
+  }
+
+  function buildMerge(){
+    const headerRowIndex = Math.max(1, Number($('headerRow').value || 1)) - 1;
+    const selected = state.sheets.filter(s=>s.selected);
+    const issues = [...state.issues]; const summary = [];
+    if(!selected.length){ alert('请至少选择一个工作表。'); return null; }
+
+    const headerRows = [];
+    selected.forEach(s => {
+      const h = (s.aoa[headerRowIndex] || []).map(display);
+      headerRows.push({sheet:s, headers:h});
+      if(!h.some(x=>norm(x))){ issues.push({level:'L3', type:'无可识别表头', file:s.fileName, sheet:s.sheetName, row:headerRowIndex+1, col:'', message:'该工作表的表头行为空，无法安全合并。', action:'请调整表头行或取消选择'}); }
+    });
+    const validHeaderRows = headerRows.filter(x=>x.headers.some(h=>norm(h)));
+    if(!validHeaderRows.length){ alert('所选工作表没有可识别表头。'); return null; }
+    const baseHeadersRaw = validHeaderRows[0].headers;
+    const used = new Set();
+    const baseHeaders = baseHeadersRaw.map((h,i)=>uniqueName(display(h).trim() || `未命名列${i+1}`, used));
+    const baseNorms = baseHeaders.map(norm);
+    let outputHeaders = [...baseHeaders]; const outputUsed = new Set(outputHeaders);
+    const sourceHeaders = ['来源文件','来源工作表','来源行号'];
+    const anomalyHeader = '复核提示';
+    if($('keepAnomalyRows').checked) outputHeaders.push(anomalyHeader);
+
+    const rows = []; let skippedEmpty=0, skippedHeader=0, anomalyRows=0;
+    for(const {sheet:s, headers:rawHeaders} of headerRows){
+      if(!rawHeaders.some(h=>norm(h))) continue;
+      const localHeaders = rawHeaders.map((h,i)=>display(h).trim() || `未命名列${i+1}`);
+      const localNorms = localHeaders.map(norm);
+      const matched = localNorms.filter(x => x && baseNorms.includes(x)).length;
+      const localNonEmpty = localNorms.filter(Boolean).length;
+      const matchRate = localNonEmpty ? matched / Math.max(localNonEmpty, baseNorms.length) : 0;
+      if($('mergeMode').value === 'name' && matchRate < 1){
+        const missing = baseHeaders.filter(h => !localNorms.includes(norm(h)));
+        const extra = localHeaders.filter(h => norm(h) && !baseNorms.includes(norm(h)));
+        issues.push({level: matchRate < 0.6 ? 'L2' : 'L1', type:'表头不一致', file:s.fileName, sheet:s.sheetName, row:headerRowIndex+1, col:'', message:`表头匹配率 ${Math.round(matchRate*100)}%。缺少：${missing.slice(0,6).join('、') || '无'}；多出：${extra.slice(0,6).join('、') || '无'}。`, action:'按字段名对齐，缺失字段补空，多出字段追加到末尾'});
+        extra.forEach(h => { if(!outputUsed.has(h)){ outputUsed.add(h); outputHeaders.splice(outputHeaders.indexOf(anomalyHeader) >= 0 ? outputHeaders.indexOf(anomalyHeader) : outputHeaders.length, 0, h); } });
+      }
+      let sourceRows=0, mergedRows=0, emptyRows=0, repeatedHeaders=0, localAnomaly=0;
+      for(let r=headerRowIndex+1; r<s.aoa.length; r++){
+        const row = s.aoa[r] || []; sourceRows++;
+        if($('skipEmptyRows').checked && isEmptyRow(row)){ skippedEmpty++; emptyRows++; continue; }
+        if($('skipRepeatedHeader').checked && sameHeaderRow(row, rawHeaders)){ skippedHeader++; repeatedHeaders++; continue; }
+        let out = Object.fromEntries(outputHeaders.map(h=>[h,'']));
+        let marks=[];
+        if($('mergeMode').value === 'name'){
+          localHeaders.forEach((lh, idx) => { const val = row[idx] ?? ''; const targetIdx = baseNorms.indexOf(norm(lh)); const target = targetIdx >= 0 ? baseHeaders[targetIdx] : lh; if(target && outputHeaders.includes(target)) out[target] = val; });
+        }else{
+          outputHeaders.forEach((h, idx) => { if(h!==anomalyHeader) out[h] = row[idx] ?? ''; });
+        }
+        const dataVals = outputHeaders.filter(h=>h!==anomalyHeader && !sourceHeaders.includes(h)).map(h=>out[h]);
+        const nonEmptyCount = dataVals.filter(v=>!isEmptyVal(v)).length;
+        if(nonEmptyCount > 0 && nonEmptyCount <= Math.max(1, Math.ceil(dataVals.length*0.25))) marks.push('疑似占位/说明行，建议复核');
+        if(/合计|小计|总计|说明|示例|样例|请填写/.test(dataVals.join(' '))) marks.push('疑似说明/汇总/示例行，建议复核');
+        if(marks.length){ anomalyRows++; localAnomaly++; }
+        if($('keepAnomalyRows').checked) out[anomalyHeader] = [...new Set(marks)].join('；');
+        const finalRow = $('sourcePosition').value === 'left'
+          ? {'来源文件':s.fileName,'来源工作表':s.sheetName,'来源行号':r+1,...out}
+          : $('sourcePosition').value === 'right'
+            ? {...out,'来源文件':s.fileName,'来源工作表':s.sheetName,'来源行号':r+1}
+            : out;
+        rows.push(finalRow); mergedRows++;
+      }
+      summary.push({文件名:s.fileName, 工作表:s.sheetName, 原始总行数:s.aoa.length, 原始非空行数:s.usedRows, 表头行号:headerRowIndex+1, 表头以下扫描行数:sourceRows, 实际合并行数:mergedRows, 跳过全空行:emptyRows, 跳过重复表头:repeatedHeaders, 需复核行数:localAnomaly, 表头匹配率:Math.round(matchRate*100)+'%'});
+    }
+    const finalHeaders = $('sourcePosition').value === 'left' ? [...sourceHeaders, ...outputHeaders] : $('sourcePosition').value === 'right' ? [...outputHeaders, ...sourceHeaders] : outputHeaders;
+    return {headers:finalHeaders, rows, issues, summary, counts:{files:state.files.length, sheets:state.sheets.length, selected:selected.length, skipped:state.sheets.length-selected.length, outRows:rows.length, skippedEmpty, skippedHeader, anomalyRows, issueCount:issues.length}};
+  }
+
+  function doMerge(){
+    const res = buildMerge(); if(!res) return;
+    state.merged=res; state.issues=res.issues; state.summary=res.summary;
+    renderStats(); renderPreview(); toggleButtons(); setStatus(`合并完成：输出 ${res.rows.length} 行。`, 100);
+  }
+
+  function renderStats(){
+    const m = state.merged;
+    const base = m ? m.counts : {files:state.files.length, sheets:state.sheets.length, selected:state.sheets.filter(s=>s.selected).length, skipped:state.sheets.filter(s=>!s.selected).length, outRows:0, skippedEmpty:0, skippedHeader:0, anomalyRows:0, issueCount:state.issues.length};
+    const items = [['文件数',base.files],['识别 sheet',base.sheets],['参与合并 sheet',base.selected],['未合并 sheet',base.skipped],['导出数据行',base.outRows],['跳过空行',base.skippedEmpty],['跳过重复表头',base.skippedHeader],['需复核提示',base.issueCount + base.anomalyRows]];
+    els.stats.innerHTML = items.map(([lab,num])=>`<div class="stat"><div class="num">${num}</div><div class="lab">${lab}</div></div>`).join('');
+    if(m){
+      const cls = (base.issueCount || base.anomalyRows) ? 'notice warnBox' : 'notice';
+      els.issueNotice.innerHTML = `<div class="${cls}">${(base.issueCount || base.anomalyRows) ? '存在需复核提醒，请在预览和导出的“需复核明细”中复核。' : '未发现明显需复核项。'} 合并结果中已按设置保留来源信息。</div>`;
+    }
+  }
+
+  function renderPreview(){
+    const m = state.merged; if(!m){ return; }
+    const limit = Math.max(20, Number($('previewLimit').value || 100));
+    const rows = m.rows.slice(0, limit);
+    if(!rows.length){ els.preview.innerHTML='<div class="previewEmpty">合并结果为空。</div>'; return; }
+    let html = '<table><thead><tr>' + m.headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>';
+    rows.forEach(r => { html += '<tr>' + m.headers.map(h=>`<td>${escapeHtml(r[h])}</td>`).join('') + '</tr>'; });
+    html += '</tbody></table>';
+    els.preview.innerHTML = html + `<div class="mini" style="padding:8px">仅预览前 ${rows.length} 行，共 ${m.rows.length} 行。</div>`;
+  }
+
+  async function exportExcel(){
+    setStatus('已点击导出，正在检查是否已有合并结果...', 3);
+    const m = state.merged;
+    if(!m){
+      setStatus('还不能导出：请先点击“合并并预览”，看到预览结果后再导出。', 0);
+      alert('还不能导出：请先点击“合并并预览”，确认有合并结果后再导出。');
+      return;
+    }
+    if(!window.XLSX){
+      setStatus('导出失败：Excel 解析/导出库没有加载成功。', 0);
+      alert('Excel 导出库未加载。请等几秒再试；如果仍不行，请确认网络可访问，或使用离线版。');
+      return;
+    }
+    els.exportBtn.disabled = true;
+    els.exportBtn.textContent = '正在导出...';
+    try{
+      setStatus('导出 5%：开始准备导出文件...', 5);
+      await waitFrame();
+
+      const wb = XLSX.utils.book_new();
+
+      setStatus('导出 15%：正在整理“合并结果”表头...', 15);
+      await waitFrame();
+      const resultAoA = [m.headers];
+      const totalRows = m.rows.length;
+      const chunkSize = 3000;
+      for(let i=0; i<totalRows; i+=chunkSize){
+        const chunk = m.rows.slice(i, i + chunkSize).map(r => m.headers.map(h => r[h] ?? ''));
+        resultAoA.push(...chunk);
+        const pct = Math.min(45, 15 + Math.round(((i + chunk.length) / Math.max(totalRows, 1)) * 30));
+        setStatus(`导出 ${pct}%：正在整理合并结果 ${Math.min(i + chunk.length, totalRows)} / ${totalRows} 行...`, pct);
+        await waitFrame(10);
+      }
+
+      setStatus('导出 50%：正在生成“合并结果”工作表...', 50);
+      await waitFrame();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resultAoA), '合并结果');
+
+      if($('includeSummary').checked){
+        setStatus('导出 62%：正在生成“处理摘要”工作表...', 62);
+        await waitFrame();
+        const sumHeaders = ['文件名','工作表','原始总行数','原始非空行数','表头行号','表头以下扫描行数','实际合并行数','跳过全空行','跳过重复表头','需复核行数','表头匹配率'];
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(m.summary, {header:sumHeaders}), '处理摘要');
+      }else{
+        setStatus('导出 62%：已跳过“处理摘要”工作表...', 62);
+        await waitFrame();
+      }
+
+      if($('includeIssues').checked){
+        setStatus('导出 74%：正在生成“需复核明细”工作表...', 74);
+        await waitFrame();
+        const issueRows = m.issues.map(x => ({等级:x.level, 类型:x.type, 文件:x.file, 工作表:x.sheet, 行号:x.row, 字段:x.col, 说明:x.message, 处理:x.action}));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(issueRows.length?issueRows:[{等级:'',类型:'',文件:'',工作表:'',行号:'',字段:'',说明:'无需复核项',处理:''}]), '需复核明细');
+      }else{
+        setStatus('导出 74%：已跳过“需复核明细”工作表...', 74);
+        await waitFrame();
+      }
+
+      setStatus('导出 88%：正在写入 Excel 文件，数据多时这里可能需要等待...', 88);
+      await waitFrame();
+      XLSX.writeFile(wb, `Excel工作表合并结果_${nowName()}.xlsx`);
+      setStatus('导出 100%：导出完成。如果没有弹出下载，请检查浏览器下载栏或默认下载文件夹。', 100);
+    }catch(err){
+      console.error(err);
+      setStatus('导出失败：请查看弹窗错误信息。', 100);
+      alert('导出失败：' + (err && err.message ? err.message : err) + '\n\n建议：刷新页面后重新上传并合并；如仍失败，请把错误信息发给开发者。');
+    }finally{
+      els.exportBtn.disabled = false;
+      els.exportBtn.textContent = '导出 Excel';
+    }
+  }
+
+  els.drop.addEventListener('click', () => els.fileInput.click());
+  els.drop.addEventListener('dragover', e => { e.preventDefault(); els.drop.classList.add('drag'); });
+  els.drop.addEventListener('dragleave', () => els.drop.classList.remove('drag'));
+  els.drop.addEventListener('drop', e => { e.preventDefault(); els.drop.classList.remove('drag'); readFiles(e.dataTransfer.files); });
+  els.fileInput.addEventListener('change', e => readFiles(e.target.files));
+  $('headerRow').addEventListener('change', () => { renderSheets(); state.merged=null; toggleButtons(); });
+  els.selectAllBtn.addEventListener('click', () => { state.sheets.forEach(s=>{ if(s.reason!=='空工作表') s.selected=true; }); renderSheets(); renderStats(); });
+  els.selectNoneBtn.addEventListener('click', () => { state.sheets.forEach(s=>s.selected=false); renderSheets(); renderStats(); });
+  els.clearBtn.addEventListener('click', () => reset(true));
+  els.mergeBtn.addEventListener('click', doMerge);
+  els.exportBtn.addEventListener('click', exportExcel);
+  ['skipEmptyRows','skipRepeatedHeader','includeSummary','includeIssues','keepAnomalyRows','mergeMode','sourcePosition','previewLimit'].forEach(id => $(id).addEventListener('change', () => { state.merged=null; els.exportBtn.disabled=false; }));
+  reset(false);
+  setStatus(window.XLSX ? '脚本已启动，Excel 解析库已加载，可以上传文件。' : '脚本已启动，正在加载 Excel 解析库；如果一直停在这里，请联网或使用离线版。', 0);
+})();
+</script>
+</body>
+</html>
